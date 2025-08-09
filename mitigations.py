@@ -22,13 +22,21 @@ def _get_knowledge_base_content():
     return knowledge_base_content
 
 # Function to create a prompt to generate mitigating controls
-def create_mitigations_prompt(threats):
-    knowledge_base_content = _get_knowledge_base_content()
+def create_mitigations_prompt(threats, use_knowledge_base=False):
+    knowledge_base_content = ""
+    if use_knowledge_base:
+        knowledge_base_content = _get_knowledge_base_content()
+
     prompt = f"""
 Act as a cyber security expert with more than 20 years experience of using the STRIDE threat modelling methodology. Your task is to provide potential mitigations for the threats identified in the threat model. It is very important that your responses are tailored to reflect the details of the threats.
+"""
 
+    if use_knowledge_base:
+        prompt += """
 When generating mitigations, you must take into account the provided knowledge base articles. These articles provide additional context and best practices that should be reflected in your recommendations.
+"""
 
+    prompt += """
 Your output should be in the form of a markdown table with the following columns:
     - Column A: Threat Type
     - Column B: Scenario
@@ -39,7 +47,7 @@ Below is the list of identified threats:
 {knowledge_base_content}
 YOUR RESPONSE (do not wrap in a code block):
 """
-    return prompt
+    return prompt.format(threats=threats, knowledge_base_content=knowledge_base_content)
 
 
 # Function to get mitigations from the GPT response.
