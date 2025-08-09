@@ -1330,32 +1330,32 @@ vulnerabilities and prioritising mitigation efforts.
 
 # ------------------ Mitigations Generation ------------------ #
 
-with tab3:
+tab1, tab2, tab_mitigations_kb, tab_mitigations_no_kb, tab4, tab5 = st.tabs(["Threat Model", "Attack Tree", "Mitigations (with KB)", "Mitigations (without KB)", "DREAD", "Test Cases"])
+
+with tab_mitigations_kb:
     st.markdown("""
-Use this tab to generate potential mitigations for the threats identified in the threat model. Mitigations are security controls or
-countermeasures that can help reduce the likelihood or impact of a security threat. The generated mitigations can be used to enhance
-the security posture of the application and protect against potential attacks.
+Use this tab to generate potential mitigations for the threats identified in the threat model, using the knowledge base for additional context.
 """)
     st.markdown("""---""")
-    
+
     # Create a submit button for Mitigations
-    mitigations_submit_button = st.button(label="Suggest Mitigations")
+    mitigations_submit_button_kb = st.button(label="Suggest Mitigations (with KB)")
 
     # If the Suggest Mitigations button is clicked and the user has identified threats
-    if mitigations_submit_button:
+    if mitigations_submit_button_kb:
         # Check if threat_model data exists
         if 'threat_model' in st.session_state and st.session_state['threat_model']:
             # Convert the threat_model data into a Markdown list
             threats_markdown = json_to_markdown(st.session_state['threat_model'], [])
             # Generate the prompt using the create_mitigations_prompt function
-            mitigations_prompt = create_mitigations_prompt(threats_markdown)
+            mitigations_prompt = create_mitigations_prompt(threats_markdown, use_knowledge_base=True)
 
             # Clear thinking content when switching models or starting a new operation
             if model_provider != "Anthropic API" or "thinking" not in anthropic_model.lower():
                 st.session_state.pop('last_thinking_content', None)
 
             # Show a spinner while suggesting mitigations
-            with st.spinner("Suggesting mitigations..."):
+            with st.spinner("Suggesting mitigations with knowledge base..."):
                 max_retries = 3
                 retry_count = 0
                 while retry_count < max_retries:
@@ -1379,8 +1379,8 @@ the security posture of the application and protect against potential attacks.
                             mitigations_markdown = get_mitigations_groq(groq_api_key, groq_model, mitigations_prompt)
 
                         # Display thinking content in an expander if available and using a model with thinking capabilities
-                        if ('last_thinking_content' in st.session_state and 
-                            st.session_state['last_thinking_content'] and 
+                        if ('last_thinking_content' in st.session_state and
+                            st.session_state['last_thinking_content'] and
                             ((model_provider == "Anthropic API" and "thinking" in anthropic_model.lower()) or
                              (model_provider == "Google AI API" and "gemini-2.5" in google_model.lower()))):
                             thinking_model = "Claude" if model_provider == "Anthropic API" else "Gemini"
@@ -1389,17 +1389,17 @@ the security posture of the application and protect against potential attacks.
 
                         # Display the suggested mitigations in Markdown
                         st.markdown(mitigations_markdown)
-                        
+
                         st.markdown("")
-                        
+
                         # Add a button to allow the user to download the mitigations as a Markdown file
                         st.download_button(
                             label="Download Mitigations",
                             data=mitigations_markdown,
-                            file_name="mitigations.md",
+                            file_name="mitigations_with_kb.md",
                             mime="text/markdown",
                         )
-                        
+
                         break  # Exit the loop if successful
                     except Exception as e:
                         retry_count += 1
@@ -1408,7 +1408,88 @@ the security posture of the application and protect against potential attacks.
                             mitigations_markdown = ""
                         else:
                             st.warning(f"Error suggesting mitigations. Retrying attempt {retry_count+1}/{max_retries}...")
-            
+
+            st.markdown("")
+        else:
+            st.error("Please generate a threat model first before suggesting mitigations.")
+
+with tab_mitigations_no_kb:
+    st.markdown("""
+Use this tab to generate potential mitigations for the threats identified in the threat model, without using the knowledge base.
+""")
+    st.markdown("""---""")
+
+    # Create a submit button for Mitigations
+    mitigations_submit_button_no_kb = st.button(label="Suggest Mitigations (without KB)")
+
+    # If the Suggest Mitigations button is clicked and the user has identified threats
+    if mitigations_submit_button_no_kb:
+        # Check if threat_model data exists
+        if 'threat_model' in st.session_state and st.session_state['threat_model']:
+            # Convert the threat_model data into a Markdown list
+            threats_markdown = json_to_markdown(st.session_state['threat_model'], [])
+            # Generate the prompt using the create_mitigations_prompt function
+            mitigations_prompt = create_mitigations_prompt(threats_markdown, use_knowledge_base=False)
+
+            # Clear thinking content when switching models or starting a new operation
+            if model_provider != "Anthropic API" or "thinking" not in anthropic_model.lower():
+                st.session_state.pop('last_thinking_content', None)
+
+            # Show a spinner while suggesting mitigations
+            with st.spinner("Suggesting mitigations without knowledge base..."):
+                max_retries = 3
+                retry_count = 0
+                while retry_count < max_retries:
+                    try:
+                        # Call the relevant get_mitigations function with the generated prompt
+                        if model_provider == "Azure OpenAI Service":
+                            mitigations_markdown = get_mitigations_azure(azure_api_endpoint, azure_api_key, azure_api_version, azure_deployment_name, mitigations_prompt)
+                        elif model_provider == "OpenAI API":
+                            mitigations_markdown = get_mitigations(openai_api_key, selected_model, mitigations_prompt)
+                        elif model_provider == "Google AI API":
+                            mitigations_markdown = get_mitigations_google(google_api_key, google_model, mitigations_prompt)
+                        elif model_provider == "Mistral API":
+                            mitigations_markdown = get_mitigations_mistral(mistral_api_key, mistral_model, mitigations_prompt)
+                        elif model_provider == "Ollama":
+                            mitigations_markdown = get_mitigations_ollama(st.session_state['ollama_endpoint'], selected_model, mitigations_prompt)
+                        elif model_provider == "Anthropic API":
+                            mitigations_markdown = get_mitigations_anthropic(anthropic_api_key, anthropic_model, mitigations_prompt)
+                        elif model_provider == "LM Studio Server":
+                            mitigations_markdown = get_mitigations_lm_studio(st.session_state['lm_studio_endpoint'], selected_model, mitigations_prompt)
+                        elif model_provider == "Groq API":
+                            mitigations_markdown = get_mitigations_groq(groq_api_key, groq_model, mitigations_prompt)
+
+                        # Display thinking content in an expander if available and using a model with thinking capabilities
+                        if ('last_thinking_content' in st.session_state and
+                            st.session_state['last_thinking_content'] and
+                            ((model_provider == "Anthropic API" and "thinking" in anthropic_model.lower()) or
+                             (model_provider == "Google AI API" and "gemini-2.5" in google_model.lower()))):
+                            thinking_model = "Claude" if model_provider == "Anthropic API" else "Gemini"
+                            with st.expander(f"View {thinking_model}'s thinking process"):
+                                st.markdown(st.session_state['last_thinking_content'])
+
+                        # Display the suggested mitigations in Markdown
+                        st.markdown(mitigations_markdown)
+
+                        st.markdown("")
+
+                        # Add a button to allow the user to download the mitigations as a Markdown file
+                        st.download_button(
+                            label="Download Mitigations",
+                            data=mitigations_markdown,
+                            file_name="mitigations_without_kb.md",
+                            mime="text/markdown",
+                        )
+
+                        break  # Exit the loop if successful
+                    except Exception as e:
+                        retry_count += 1
+                        if retry_count == max_retries:
+                            st.error(f"Error suggesting mitigations after {max_retries} attempts: {e}")
+                            mitigations_markdown = ""
+                        else:
+                            st.warning(f"Error suggesting mitigations. Retrying attempt {retry_count+1}/{max_retries}...")
+
             st.markdown("")
         else:
             st.error("Please generate a threat model first before suggesting mitigations.")
